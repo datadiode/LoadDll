@@ -23,6 +23,7 @@ public:
 // Überschreibungen
 public:
 	virtual BOOL InitInstance();
+	virtual int ExitInstance();
 
 // Implementierung
 

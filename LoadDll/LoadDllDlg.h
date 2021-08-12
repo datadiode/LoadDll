@@ -8,16 +8,13 @@
 
 
 // CLoadDllDlg-Dialogfeld
-class CLoadDllDlg : public CDialogEx
+class CLoadDllDlg : public CDialogEx, public CCommandLineInfo
 {
 // Konstruktion
 public:
 	CLoadDllDlg(CWnd* pParent = NULL);	// Standardkonstruktor
-	~CLoadDllDlg()
-	{
-		delete m_pToolTip;
-		m_pToolTip = NULL;
-	}
+
+	virtual void ParseParam(const TCHAR* pszParam, BOOL bFlag, BOOL bLast);
 
 // Dialogfelddaten
 	enum { IDD = IDD_LOADDLL_DIALOG };
@@ -32,8 +29,6 @@ protected:
 
 	// Generierte Funktionen für die Meldungstabellen
 	virtual BOOL OnInitDialog();
-	afx_msg void OnPaint();
-	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 
 private:
@@ -61,9 +56,9 @@ public:
 	UINT16 GetArgNumberFromFunction( PBYTE pAddress, WORD& wNumberOfPseudoPushArguments );
 	BOOL GetArgument( CEdit * pControl, CComboBox * pComboBox, LPBYTE pData, size_t nLength, PBYTE& pArgPtr );
 	BOOL LoadDll();
-	BOOL LoadDllAndExecuteFunction();
+	int LoadDllAndExecuteFunction();
 
-	void ExecuteFunction( PVOID pFunction, PBYTE pArg1, PBYTE pArg2, PBYTE pArg3, PBYTE pArg4, PBYTE pArg5 );
+	int ExecuteFunction( PVOID pFunction, PBYTE pArg1, PBYTE pArg2, PBYTE pArg3, PBYTE pArg4, PBYTE pArg5 );
 	BOOL GetTextFromListView( wchar_t * lpszBuffer, int nBufferSize, int nSubItem = 1 );
 	void ShowExecutedFunctionInformation( int nReturn, BOOL fException = FALSE );
 
@@ -81,7 +76,7 @@ public:
 	afx_msg void OnBnClickedHelp();
 	CComboBox cbCallingConvention;
 	CButton m_chkPause;
-	CToolTipCtrl* m_pToolTip;
+	CToolTipCtrl m_tooltip;
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	afx_msg void OnDropFiles(HDROP hDropInfo);
 };

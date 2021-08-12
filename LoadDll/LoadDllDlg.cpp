@@ -62,7 +62,7 @@ void CLoadDllDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_LIST_EXPORTS, lstExports);
-	DDX_Control(pDX, IDC_CMB_NUMBEROFARGS, cbNumberOfArgs);
+	DDX_Control(pDX, IDC_CB_NUMBEROFARGS, cbNumberOfArgs);
 	DDX_Control(pDX, IDC_ARG1, edtArg1);
 	DDX_Control(pDX, IDC_ARG2, edtArg2);
 	DDX_Control(pDX, IDC_ARG3, edtArg3);
@@ -73,9 +73,6 @@ void CLoadDllDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_DLLPATH, edtDllPath);
 	DDX_Control(pDX, IDC_CALL_EXPORT, rbExportedFunction);
 	DDX_Control(pDX, IDC_CALL_ENTRYPOINT, rbCallEntrypoint);
-
-	CButton rbCallEntrypoint;
-	CButton rbExportedFunction;
 	DDX_Control(pDX, IDC_CB_ARG1, cbArgType1);
 	DDX_Control(pDX, IDC_CB_ARG2, cbArgType2);
 	DDX_Control(pDX, IDC_CB_ARG3, cbArgType3);
@@ -86,11 +83,9 @@ void CLoadDllDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CLoadDllDlg, CDialogEx)
-	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_CALL_ENTRYPOINT, &CLoadDllDlg::OnBnClickedCallEntrypoint)
 	ON_BN_CLICKED(IDC_CALL_EXPORT, &CLoadDllDlg::OnBnClickedCallExport)
-	ON_CBN_SELCHANGE(IDC_CMB_NUMBEROFARGS, &CLoadDllDlg::OnCbnSelchangeCmbNumberofargs)
+	ON_CBN_SELCHANGE(IDC_CB_NUMBEROFARGS, &CLoadDllDlg::OnCbnSelchangeCmbNumberofargs)
 	ON_BN_CLICKED(ID_RUN, &CLoadDllDlg::OnBnClickedRun)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_EXPORTS, &CLoadDllDlg::OnNMClickListExports)
 	ON_BN_CLICKED(IDC_LOADFILE, &CLoadDllDlg::OnBnClickedLoadfile)
@@ -147,22 +142,18 @@ BOOL CLoadDllDlg::OnInitDialog()
 
 
 	//Set up the tooltip
-	m_pToolTip = new CToolTipCtrl;
-	if(!m_pToolTip->Create(this))
+	if (m_tooltip.Create(this))
 	{
-		return TRUE;
+		m_tooltip.SetMaxTipWidth(500);
+		m_tooltip.AddTool(this, L"LoadDLL by Esmid Idrizovic");
+		m_tooltip.AddTool(&m_chkPause, L"This will call an INT 3 right before the DLL is loaded or the function executed, so don't worry if it looks like LoadDLL has crashed. You can attach with your debugger to LoadDLL and move on with your analysis.");
+		m_tooltip.AddTool(&rbCallEntrypoint, L"This will load the DLL directly into memory with a custom LoadLibrary function and will execute all TLS entries and then the DllMain.");
+		m_tooltip.AddTool(&rbExportedFunction, L"This will load the DLL using LoadLibrary and will execute the selected function.");
+		m_tooltip.AddTool(&btnLoadFile, L"Select your DLL file...");
+		m_tooltip.AddTool(&cbCallingConvention, L"You must select the right calling convention of the function.\n\nStdcall: function is going to clean up the stack.\nFastcall: ECX+EDX, rest on stack and function is going to clean up.\nCdecl: you have to clean up the stack.\nThiscall: this-pointer is in ECX, function is going to clean up the stack.");
+		m_tooltip.AddTool(&cbNumberOfArgs, L"You can always change the number of the arguments if it's wrong detected by LoadDLL.");
+		m_tooltip.Activate(TRUE);
 	}
-
-	m_pToolTip->SetMaxTipWidth(500);
-	m_pToolTip->AddTool(this, L"LoadDLL by Esmid Idrizovic");
-	m_pToolTip->AddTool(&m_chkPause, L"This will call an INT 3 right before the DLL is loaded or the function executed, so don't worry if it looks like LoadDLL has crashed. You can attach with your debugger to LoadDLL and move on with your analysis.");
-	m_pToolTip->AddTool(&rbCallEntrypoint, L"This will load the DLL directly into memory with a custom LoadLibrary function and will execute all TLS entries and then the DllMain.");
-	m_pToolTip->AddTool(&rbExportedFunction, L"This will load the DLL using LoadLibrary and will execute the selected function.");
-	m_pToolTip->AddTool(&btnLoadFile, L"Select your DLL file...");
-	m_pToolTip->AddTool(&cbCallingConvention, L"You must select the right calling convention of the function.\n\nStdcall: function is going to clean up the stack.\nFastcall: ECX+EDX, rest on stack and function is going to clean up.\nCdecl: you have to clean up the stack.\nThiscall: this-pointer is in ECX, function is going to clean up the stack.");
-	m_pToolTip->AddTool(&cbNumberOfArgs, L"You can always change the number of the arguments if it's wrong detected by LoadDLL.");
-
-	m_pToolTip->Activate(TRUE);
 
 	// accept drag and drop
 	DragAcceptFiles(TRUE);
@@ -170,42 +161,52 @@ BOOL CLoadDllDlg::OnInitDialog()
 	//
 	// load the given argument as a DLL path
 	//
-	LPTSTR lpszCmdLine = AfxGetApp()->m_lpCmdLine;
-	if (lpszCmdLine && *lpszCmdLine)
-	{
-		// DLL given as a start argument
-		LoadFile(lpszCmdLine);
-	}
+	AfxGetApp()->ParseCommandLine(*this);
 
 	return TRUE;
 }
 
-void CLoadDllDlg::OnPaint()
+void CLoadDllDlg::ParseParam(const TCHAR* pszParam, BOOL bFlag, BOOL bLast)
 {
-	if (IsIconic())
+	int i = cbNumberOfArgs.GetCurSel();
+	if (bFlag)
 	{
-		CPaintDC dc(this);
-
-		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
-
-		int cxIcon = GetSystemMetrics(SM_CXICON);
-		int cyIcon = GetSystemMetrics(SM_CYICON);
-		CRect rect;
-		GetClientRect(&rect);
-		int x = (rect.Width() - cxIcon + 1) / 2;
-		int y = (rect.Height() - cyIcon + 1) / 2;
-
-		dc.DrawIcon(x, y, m_hIcon);
+		int expected = 0;
+		if (StrToIntEx(pszParam, STIF_SUPPORT_HEX, &expected))
+		{
+			int observed = LoadDllAndExecuteFunction();
+			EndDialog(observed == expected ? 0 : observed != 0 ? observed : -1);
+		}
+		else if (cbCallingConvention.SelectString(0, pszParam) == -1)
+		{
+			SendDlgItemMessage(IDC_CB_ARG1 + i, CB_SELECTSTRING, 0, reinterpret_cast<LPARAM>(pszParam));
+		}
 	}
-	else
+	else if (edtDllPath.GetWindowTextLength() == 0)
 	{
-		CDialogEx::OnPaint();
+		LoadFile(pszParam);
 	}
-}
-
-HCURSOR CLoadDllDlg::OnQueryDragIcon()
-{
-	return static_cast<HCURSOR>(m_hIcon);
+	else if (rbCallEntrypoint.GetCheck())
+	{
+		rbExportedFunction.SendMessage(BM_CLICK);
+		int n = lstExports.GetItemCount();
+		for (int i = 0; i < n; ++i)
+		{
+			TCHAR text[MAX_PATH];
+			lstExports.GetItemText(i, 1, text, _countof(text));
+			if (wcscmp(text, pszParam) == 0)
+			{
+				lstExports.SetItemState(i, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+				break;
+			}
+		}
+	}
+	else if (i < 5)
+	{
+		SetDlgItemText(IDC_ARG1 + i, pszParam);
+		cbNumberOfArgs.SetCurSel(i + 1);
+		OnCbnSelchangeCmbNumberofargs();
+	}
 }
 
 //
@@ -679,11 +680,11 @@ lblAbort:
 //
 // Load DLL and execute exported function.
 //
-BOOL CLoadDllDlg::LoadDllAndExecuteFunction()
+int CLoadDllDlg::LoadDllAndExecuteFunction()
 {
 #define ARG_ALLOC_SIZE				0x100
 
-	BOOL fResult = FALSE;
+	int nFunctionReturn = -1;
 	HMODULE hDLL = NULL;
 	wchar_t szErrorText[ 0x100 ];
 	wchar_t szFileName[MAX_PATH +1];
@@ -753,7 +754,7 @@ BOOL CLoadDllDlg::LoadDllAndExecuteFunction()
 	GetArgument( &edtArg4, &cbArgType4, baArg4, sizeof(baArg4), pArg4 );
 	GetArgument( &edtArg5, &cbArgType5, baArg4, sizeof(baArg5), pArg5 );
 
-	ExecuteFunction( pFunction, pArg1, pArg2, pArg3, pArg4, pArg5 );
+	nFunctionReturn = ExecuteFunction( pFunction, pArg1, pArg2, pArg3, pArg4, pArg5 );
 
 lblAbort:
 	//
@@ -766,13 +767,9 @@ lblAbort:
 			wsprintf( szErrorText, L"Can't unload DLL. Error = %d\n", GetLastError() );
 			this->MessageBox( szErrorText, L"Error", MB_ICONERROR );
 		}
-		else
-		{
-			fResult = TRUE;
-		}
 	}
 
-	return fResult;
+	return nFunctionReturn;
 }
 
 //
@@ -806,9 +803,9 @@ BOOL CLoadDllDlg::GetTextFromListView( wchar_t * lpszBuffer, int nBufferSize, in
 //
 // Executes __stdcall function from a DLL.
 //
-void CLoadDllDlg::ExecuteFunction( PVOID pFunction, PBYTE pArg1, PBYTE pArg2, PBYTE pArg3, PBYTE pArg4, PBYTE pArg5 )
+int CLoadDllDlg::ExecuteFunction( PVOID pFunction, PBYTE pArg1, PBYTE pArg2, PBYTE pArg3, PBYTE pArg4, PBYTE pArg5 )
 {
-	int nFunctionReturn = 0;
+	int nFunctionReturn = -1;
 	BOOL fException = FALSE;
 	int nNumberOfArgsSelection;
 	int nCallingConvention;
@@ -1069,7 +1066,11 @@ void CLoadDllDlg::ExecuteFunction( PVOID pFunction, PBYTE pArg1, PBYTE pArg2, PB
 	//
 	// Show information about the executed function
 	//
-	ShowExecutedFunctionInformation(nFunctionReturn, fException);
+	if (IsWindowVisible())
+	{
+		ShowExecutedFunctionInformation(nFunctionReturn, fException);
+	}
+	return nFunctionReturn;
 }
 
 //
@@ -1383,10 +1384,7 @@ void CLoadDllDlg::OnBnClickedHelp()
 
 BOOL CLoadDllDlg::PreTranslateMessage(MSG* pMsg)
 {
-	// TODO: Add your specialized code here and/or call the base class
-	if (NULL != m_pToolTip)
-		m_pToolTip->RelayEvent(pMsg);
-
+	m_tooltip.RelayEvent(pMsg);
 	return CDialogEx::PreTranslateMessage(pMsg);
 }
 
