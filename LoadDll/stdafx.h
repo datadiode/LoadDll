@@ -17,24 +17,15 @@
 
 #define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS      // einige CString-Konstruktoren sind explizit
 
+// https ://devblogs.microsoft.com/cppblog/reducing-the-size-of-statically-linked-mfc-applications-in-vc11/
+#define _AFX_NO_MFC_CONTROLS_IN_DIALOGS
+
 // Deaktiviert das Ausblenden einiger häufiger und oft ignorierter Warnungen durch MFC
 #define _AFX_ALL_WARNINGS
 
 #include <afxwin.h>         // MFC-Kern- und -Standardkomponenten
 #include <afxext.h>         // MFC-Erweiterungen
-
-
-
-
-
-#ifndef _AFX_NO_OLE_SUPPORT
-#include <afxdtctl.h>           // MFC-Unterstützung für allgemeine Steuerelemente von Internet Explorer 4
-#endif
-#ifndef _AFX_NO_AFXCMN_SUPPORT
-#include <afxcmn.h>             // MFC-Unterstützung für allgemeine Windows-Steuerelemente
-#endif // _AFX_NO_AFXCMN_SUPPORT
-
-#include <afxcontrolbars.h>     // MFC-Unterstützung für Menübänder und Steuerleisten
+#include <afxcmn.h>         // MFC-Unterstützung für allgemeine Windows-Steuerelemente
 
 #include "MemoryModule.h"
 
@@ -50,6 +41,3 @@
 #else
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
-
-
-
