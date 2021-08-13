@@ -667,7 +667,7 @@ int CLoadDllDlg::LoadDllAndExecuteFunction()
 	// Load DLL
 	//
 	edtDllPath.GetWindowText( szFileName, MAX_PATH );
-	hDLL = LoadLibrary( szFileName );
+	hDLL = LoadLibraryEx( szFileName, NULL, LOAD_WITH_ALTERED_SEARCH_PATH );
 	if ( hDLL == NULL )
 	{
 		wsprintf( szErrorText, L"Can't load DLL \"%s\". Error = %d\n", szFileName, GetLastError() );
